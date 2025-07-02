@@ -1,0 +1,21 @@
+{
+  "domain": "asys_ble",
+  "name": "Asys Filtréo",
+  "codeowners": [
+    "@tom42530"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
+  "documentation": "https://github.com/tom42530/asys_ble_ha",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/tom42530/asys_ble_ha/issues",
+  "loggers": [
+    "bleak_retry_connector"
+  ],
+  "quality_scale": "silver",
+  "requirements": [],
+  "version": "0.1"
+}
