@@ -5,6 +5,7 @@
 
 This integration allows to monitor Bluetooth Low Energy (BLE) like asys precise'o+ systemsfrom within [Home Assistant](https://www.home-assistant.io/). After installation, no configuration is required. You can use the [ESPHome Bluetooth proxy][btproxy-url] to extend the bluetooth coverage range.
 
+![dashboard](https://github.com/user-attachments/assets/76d722d7-45da-44a7-927a-eff7f493be9d)
 
 
 
@@ -48,7 +49,7 @@ This integration follows standard integration removal. No extra steps are requir
 
 ### In case you have troubles you'd like to have help with
 
-- please [enable the debug protocol](https://www.home-assistant.io/docs/configuration/troubleshooting/#debug-logs-and-diagnostics) for the [BLE Battery Management integration](https://my.home-assistant.io/redirect/integration/?domain=bms_ble),
+- please [enable the debug protocol](https://www.home-assistant.io/docs/configuration/troubleshooting/#debug-logs-and-diagnostics),
 - restart Home Assistant, wait till it is fully started up,
 - reproduce the issue,
 - disable the log (Home Assistant will prompt you to download the log), and finally
