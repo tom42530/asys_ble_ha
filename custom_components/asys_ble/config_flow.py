@@ -54,7 +54,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Check if device is supported by an available BMS class."""
         
         bms_plugin: ModuleType = await async_import_module(
-            self.hass, f"custom_components.bms_ble.plugins.daly_bms"
+            self.hass, f"custom_components.asys_ble.plugins.daly_bms"
         )
         try:
             if bms_plugin.BMS.supported(discovery_info):

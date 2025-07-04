@@ -23,7 +23,7 @@ async def async_get_device_diagnostics(
     adapter_info: str = "unavailable"
     coord: Final[BTBmsCoordinator] = entry.runtime_data
     mac: str = next(
-        (id_value for domain, id_value in device.identifiers if domain == "bms_ble"), ""
+        (id_value for domain, id_value in device.identifiers if domain == "asys_ble"), ""
     )
     if (adv_data := async_last_service_info(hass, address=mac, connectable=True)) and (
         adapter := dr.async_get(hass).async_get_device(

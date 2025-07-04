@@ -1,4 +1,4 @@
-"""Support for BMS_BLE binary sensors."""
+"""Support for asys_BLE binary sensors."""
 
 from collections.abc import Callable
 
@@ -10,7 +10,7 @@ from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.bms_ble.plugins.basebms import BMSsample
+from custom_components.asys_ble.plugins.basebms import BMSsample
 from . import BTBmsConfigEntry
 from .const import (
     DOMAIN,
