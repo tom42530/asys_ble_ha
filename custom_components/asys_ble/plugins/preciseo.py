@@ -200,7 +200,7 @@ class BMS(BaseBMS):
         except BleakError as e:
             self._log.error(f"error during test{e}")
         try:
-            control_value = await self._client.read_gatt_char("E21D0104-AE5F-11EB-8529-0242AC130003")
+            control_value = await self._client.read_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F")
             self._log.debug(f"read control {control_value.hex()}")
             data["light_state"] = control_value[2] != 0
             data["pairing_state"] = False
@@ -210,12 +210,12 @@ class BMS(BaseBMS):
             self._log.info(f"date_time: {time_date_time.decode('utf-8')}")
             time_day = await self._client.read_gatt_char("00002a09-0000-1000-8000-00805f9b34fb")
             self._log.info(f"day: {time_day.decode('utf-8')}")
-            char_installation = await self._client.read_gatt_char("e21d0101-ae5f-11eb-8529-0242ac130003")
+            char_installation = await self._client.read_gatt_char("3BEF0101-F30A-DF90-4A4C-74B6EB69184F")
             self._log.info(f"char_installation: {char_installation.hex()}")
-            char_parametrage_main = await self._client.read_gatt_char("e21d0102-ae5f-11eb-8529-0242ac130003")
+            char_parametrage_main = await self._client.read_gatt_char("3BEF0102-F30A-DF90-4A4C-74B6EB69184F")
             self._log.info(f"char_parametrage_main: {char_parametrage_main.hex()}")
-            char_parametrage_hecl = await self._client.read_gatt_char("e21d0103-ae5f-11eb-8529-0242ac130003")
-            self._log.info(f"char_parametrage_hecl: {char_parametrage_hecl.hex()}")
+            char_parametrage_hppe = await self._client.read_gatt_char("3BEF0103-F30A-DF90-4A4C-74B6EB69184F")
+            self._log.info(f"char_parametrage_hecl: {char_parametrage_hppe.hex()}")
         except BleakError as e:
             data["pairing_state"] = True
             self._log.error(f"read control error trying associate{e}")
