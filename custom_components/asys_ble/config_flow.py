@@ -21,7 +21,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
 )
 
-from .const import BMS_TYPES, DOMAIN, LOGGER
+from .const import BMS_TYPES, DOMAIN, LOGGER, ASYS_DEVICE_TYPES
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -52,22 +52,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, discovery_info: BluetoothServiceInfoBleak
     ) -> str | None:
         """Check if device is supported by an available BMS class."""
-        
-        bms_plugin: ModuleType = await async_import_module(
-            self.hass, f"custom_components.asys_ble.plugins.daly_bms"
-        )
-        try:
-            if bms_plugin.BMS.supported(discovery_info):
-                LOGGER.debug(
-                    "Device %s (%s) detected as '%s'",
-                    discovery_info.name,
-                    format_mac(discovery_info.address),
-                    bms_plugin.BMS.device_id(),
-                )
-                return bms_plugin.__name__
-        except AttributeError:
-            LOGGER.error("Invalid BMS plugin %s", bms_type)
+        for asys_type in ASYS_DEVICE_TYPES:
+            asys_plugin: ModuleType = await async_import_module(
+                self.hass, f"custom_components.asys_ble.plugins.{asys_type}"
+            )
+            try:
+                if asys_plugin.BMS.supported(discovery_info):
+                    LOGGER.debug(
+                        "Device %s (%s) detected as '%s'",
+                        discovery_info.name,
+                        format_mac(discovery_info.address),
+                        asys_plugin.BMS.device_id(),
+                    )
+                    return asys_plugin.__name__
+            except AttributeError:
+                LOGGER.error("Invalid asys plugin %s", asys_type)
         return None
+
+
 
     async def async_step_bluetooth(
         self, discovery_info: BluetoothServiceInfoBleak
