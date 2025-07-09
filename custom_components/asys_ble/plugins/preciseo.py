@@ -226,10 +226,10 @@ class BMS(BaseBMS):
         return data
 
     async def turn_on_off_light(self,light_state: bool = False) -> None:
-        control_value = await self._client.read_gatt_char("E21D0104-AE5F-11EB-8529-0242AC130003")
+        control_value = await self._client.read_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F")
         self._log.debug(f"read control {control_value}")
         control_value[2] = 1 if light_state else 0
-        await self._client.write_gatt_char("E21D0104-AE5F-11EB-8529-0242AC130003",control_value)
+        await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F",control_value)
         #data["light_state"] = control_value[2] != 0
         return
 
