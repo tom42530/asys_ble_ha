@@ -56,6 +56,7 @@ class BMS(BaseBMS):
         return [
             {
                 "service_uuid": "3bef00100-f30a-df90-4a4c-74b6eb69184f",
+                "connectable": True,
 
             }
         ]

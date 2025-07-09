@@ -137,6 +137,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         for discovery_info in async_discovered_service_info(self.hass, False):
             address = discovery_info.address
             LOGGER.debug("user step "+address)
+
+            #if address == "FF:F9:D6:A5:C9:E3":
+            LOGGER.debug(f"user step connectable : {discovery_info.connectable} service_uuids={discovery_info.service_uuids}" )
+
             #LOGGER.debug("user step "+discovery_info.service_uuids[0])
             if address in current_addresses or address in self._disc_devs:
                 continue
