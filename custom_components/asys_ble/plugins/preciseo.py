@@ -74,7 +74,7 @@ class BMS(BaseBMS):
     @staticmethod
     def uuid_rx() -> str:
         """Return 16-bit UUID of characteristic that provides notification/read property."""
-        return "E21D0105-AE5F-11EB-8529-0242AC130003"
+        return "3BEF010D-F30A-DF90-4A4C-74B6EB69184F"
 
     @staticmethod
     def uuid_tx() -> str:
