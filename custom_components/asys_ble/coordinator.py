@@ -36,7 +36,7 @@ class BTBmsCoordinator(DataUpdateCoordinator[BMSsample]):
             hass=hass,
             logger=LOGGER,
             name=ble_device.address,
-            update_interval=timedelta(seconds=5),
+            update_interval=timedelta(seconds=60),
             always_update=False,  # only update when sensor value has changed
             config_entry=config_entry,
         )
