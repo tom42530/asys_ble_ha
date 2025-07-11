@@ -233,6 +233,15 @@ class BMS(BaseBMS):
         return
 
 
+
+    async def change_light_color(self) -> None:
+        self._log.debug("Changing light color")
+        control_value = await self._client.read_gatt_char("21D0104-AE5F-11EB-8529-0242AC130003")
+        self._log.debug(f"read control {control_value}")
+        control_value[3] = 1
+        await self._client.write_gatt_char("E21D0104-AE5F-11EB-8529-0242AC130003", control_value)
+        return
+
     async def _associate_asic(self) -> None:
 
         random_key = await self.client.read_gatt_char("3BEF0201-F30A-DF90-4A4C-74B6EB69184F")

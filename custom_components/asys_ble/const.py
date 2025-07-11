@@ -10,9 +10,7 @@ from homeassistant.const import (  # noqa: F401  # pylint: disable=unused-import
     ATTR_VOLTAGE,
 )
 
-BMS_TYPES: Final[list[str]] = [
-    "daly_bms",   
-]  # available BMS types
+
 
 ASYS_DEVICE_TYPES: Final[list[str]] = [
     "preciseob",

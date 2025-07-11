@@ -206,16 +206,16 @@ class BMS(BaseBMS):
             data["pairing_state"] = False
 
 
-            time_date_time = await self._client.read_gatt_char("00002a08-0000-1000-8000-00805f9b34fb")
-            self._log.info(f"date_time: {time_date_time.decode('utf-8')}")
-            time_day = await self._client.read_gatt_char("00002a09-0000-1000-8000-00805f9b34fb")
-            self._log.info(f"day: {time_day.decode('utf-8')}")
-            char_installation = await self._client.read_gatt_char("3BEF0101-F30A-DF90-4A4C-74B6EB69184F")
-            self._log.info(f"char_installation: {char_installation.hex()}")
-            char_parametrage_main = await self._client.read_gatt_char("3BEF0102-F30A-DF90-4A4C-74B6EB69184F")
-            self._log.info(f"char_parametrage_main: {char_parametrage_main.hex()}")
-            char_parametrage_hppe = await self._client.read_gatt_char("3BEF0103-F30A-DF90-4A4C-74B6EB69184F")
-            self._log.info(f"char_parametrage_hecl: {char_parametrage_hppe.hex()}")
+            #time_date_time = await self._client.read_gatt_char("00002a08-0000-1000-8000-00805f9b34fb")
+            #self._log.info(f"date_time: {time_date_time.decode('utf-8')}")
+            #time_day = await self._client.read_gatt_char("00002a09-0000-1000-8000-00805f9b34fb")
+            #self._log.info(f"day: {time_day.decode('utf-8')}")
+            #char_installation = await self._client.read_gatt_char("3BEF0101-F30A-DF90-4A4C-74B6EB69184F")
+            #self._log.info(f"char_installation: {char_installation.hex()}")
+            #char_parametrage_main = await self._client.read_gatt_char("3BEF0102-F30A-DF90-4A4C-74B6EB69184F")
+            #self._log.info(f"char_parametrage_main: {char_parametrage_main.hex()}")
+            #char_parametrage_hppe = await self._client.read_gatt_char("3BEF0103-F30A-DF90-4A4C-74B6EB69184F")
+            #self._log.info(f"char_parametrage_hecl: {char_parametrage_hppe.hex()}")
         except BleakError as e:
             data["pairing_state"] = True
             self._log.error(f"read control error trying associate{e}")
@@ -226,29 +226,20 @@ class BMS(BaseBMS):
         return data
 
     async def turn_on_off_light(self,light_state: bool = False) -> None:
+        self._log.debug("Changing light state")
         control_value = await self._client.read_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F")
         self._log.debug(f"read control {control_value}")
-        if light_state:
-            control_value[2] = 1
-            control_value[3] = 1
-            await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F",control_value)
-            time.sleep(5)
-            control_value[2] = 1
-            control_value[3] = 1
-            await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F", control_value)
-            time.sleep(5)
-            control_value[2] = 1
-            control_value[3] = 1
-            await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F", control_value)
-            time.sleep(5)
-            control_value[2] = 1
-            control_value[3] = 1
-            await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F", control_value)
-            #data["light_state"] = control_value[2] != 0
-        else:
-            control_value[2] = 0
-            control_value[3] = 0
-            await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F", control_value)
+        control_value[2] = 1 if light_state else 0
+        await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F", control_value)
+        return
+
+
+    async def change_light_color(self) -> None:
+        self._log.debug("Changing light color")
+        control_value = await self._client.read_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F")
+        self._log.debug(f"read control {control_value}")
+        control_value[3] = 1
+        await self._client.write_gatt_char("3BEF010C-F30A-DF90-4A4C-74B6EB69184F", control_value)
         return
 
 

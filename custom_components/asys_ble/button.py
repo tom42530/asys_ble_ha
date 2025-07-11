@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from custom_components.asys_ble.plugins.basebms import BMSmode, BMSsample
+from custom_components.asys_ble.plugins.basebms import  BMSsample
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -43,7 +43,7 @@ class BmsButtonEntityDescription(ButtonEntityDescription, frozen_or_thawed=True)
 BUTTON_TYPES: list[BmsButtonEntityDescription] = [
     BmsButtonEntityDescription(
         key="filtration_hors_gel_state",
-        name="paring useless",
+        name="Change light color",
         icon = "mdi:snowflake-alert",
         device_class=BinarySensorDeviceClass.RUNNING,
         attr_fn=lambda data: (
@@ -94,7 +94,7 @@ class BMSButtonEntity(CoordinatorEntity[BTBmsCoordinator], ButtonEntity):  # typ
 
     async def async_press(self) -> None:
         LOGGER.debug("button press")
-        return await self.coordinator.associate()
+        return await self.coordinator._device.change_light_color()
 
     @property
     def is_on(self) -> bool | None:  # type: ignore[reportIncompatibleVariableOverride]

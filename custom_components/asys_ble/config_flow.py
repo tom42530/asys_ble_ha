@@ -21,7 +21,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
 )
 
-from .const import BMS_TYPES, DOMAIN, LOGGER, ASYS_DEVICE_TYPES
+from .const import  DOMAIN, LOGGER, ASYS_DEVICE_TYPES
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

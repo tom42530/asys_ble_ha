@@ -46,21 +46,7 @@ type BMSvalue = Literal[
     "problem_code",
 ]
 
-type BMSpackvalue = Literal[
-    "pack_voltages",
-    "pack_currents",
-    "pack_battery_levels",
-    "pack_cycles",
-]
 
-
-class BMSmode(IntEnum):
-    """Enumeration of BMS modes."""
-
-    UNKNOWN = -1
-    BULK = 0x00
-    ABSORPTION = 0x01
-    FLOAT = 0x02
 
 class BMSsample(TypedDict, total=False):
     """Dictionary representing a sample of battery management system (BMS) data."""
