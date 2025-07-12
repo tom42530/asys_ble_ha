@@ -19,8 +19,8 @@ from homeassistant.components.bluetooth.match import ble_device_matches
 from homeassistant.loader import BluetoothMatcherOptional
 
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad,unpad
-
+from Crypto.Util.Padding import pad, unpad
+from homeassistant.helpers.storage import Store
 
 type BMSvalue = Literal[
     "battery_charging",
@@ -47,7 +47,6 @@ type BMSvalue = Literal[
 ]
 
 
-
 class BMSsample(TypedDict, total=False):
     """Dictionary representing a sample of battery management system (BMS) data."""
 
@@ -66,7 +65,6 @@ class BMSsample(TypedDict, total=False):
     light_state: bool
 
 
-
 class AdvertisementPattern(TypedDict, total=False):
     """Optional patterns that can match Bleak advertisement data."""
 
@@ -81,6 +79,10 @@ class AdvertisementPattern(TypedDict, total=False):
 class BaseBMS(ABC):
     """Abstract base class for battery management system."""
 
+    CHARACTERISTIC_SYSTEM_SHAREDKEY_UUID = "3BEF0202-F30A-DF90-4A4C-74B6EB69184F"
+    CHARACTERISTIC_SYSTEM_ENCRYPTKEY_UUID = "3BEF0203-F30A-DF90-4A4C-74B6EB69184F"
+    CHARACTERISTIC_SYSTEM_RANDOMKEY_UUID = "3BEF0201-F30A-DF90-4A4C-74B6EB69184F"
+
     MAX_RETRY: Final[int] = 3  # max number of retries for data requests
     _MAX_TIMEOUT_FACTOR: Final[int] = 8  # limit timout increase to 8x
     TIMEOUT: Final[float] = BLEAK_TRANSIENT_BACKOFF_TIME * _MAX_TIMEOUT_FACTOR
@@ -88,10 +90,11 @@ class BaseBMS(ABC):
     _HRS_TO_SECS: Final[int] = 60 * 60  # seconds in an hour
 
     def __init__(
-        self,
-        logger_name: str,
-        ble_device: BLEDevice,
-        reconnect: bool = False,
+            self,
+            logger_name: str,
+            ble_device: BLEDevice,
+            store: Store,
+            reconnect: bool = False,
     ) -> None:
         """Intialize the BMS.
 
@@ -106,15 +109,16 @@ class BaseBMS(ABC):
 
         """
         assert (
-            getattr(self, "_notification_handler", None) is not None
+                getattr(self, "_notification_handler", None) is not None
         ), "BMS class must define _notification_handler method"
         self._ble_device: Final[BLEDevice] = ble_device
         self._reconnect: Final[bool] = reconnect
         self.name: Final[str] = self._ble_device.name or "undefined"
         self._log: Final[logging.Logger] = logging.getLogger(
             f"{logger_name.replace('.plugins', '')}::{self.name}:"
-            f"{self._ble_device.address[-5:].replace(':','')})"
+            f"{self._ble_device.address[-5:].replace(':', '')})"
         )
+        self._store = store
         self._inv_wr_mode: bool | None = None  # invert write mode (WNR <-> W)
 
         self._log.debug(
@@ -126,7 +130,7 @@ class BaseBMS(ABC):
             services=[*self.uuid_services()],
         )
         self._data: bytearray = bytearray()
-        #self._data_control: bytearray = bytearray()
+        # self._data_control: bytearray = bytearray()
         self._data_event: Final[asyncio.Event] = asyncio.Event()
 
     @staticmethod
@@ -150,12 +154,12 @@ class BaseBMS(ABC):
     @classmethod
     def supported(cls, discovery_info: BluetoothServiceInfoBleak) -> bool:
         """Return true if service_info matches BMS type."""
-        #if "e21d0100-ae5f-11eb-8529-0242ac130003" in discovery_info.service_uuids:
+        # if "e21d0100-ae5f-11eb-8529-0242ac130003" in discovery_info.service_uuids:
         #    return True
-        #logging.debug("BMS already connected %s",discovery_info.service_uuids)
+        # logging.debug("BMS already connected %s",discovery_info.service_uuids)
         for matcher_dict in cls.matcher_dict_list():
             if ble_device_matches(
-                BluetoothMatcherOptional(**matcher_dict), discovery_info
+                    BluetoothMatcherOptional(**matcher_dict), discovery_info
             ):
                 return True
         return False
@@ -187,8 +191,6 @@ class BaseBMS(ABC):
     def _add_missing_values(data: BMSsample, values: frozenset[BMSvalue]) -> None:
         return
 
-
-
     def _on_disconnect(self, _client: BleakClient) -> None:
         """Disconnect callback function."""
 
@@ -202,9 +204,6 @@ class BaseBMS(ABC):
         await self._client.start_notify(
             self.uuid_rx(), getattr(self, "_notification_handler")
         )
-        #await self._client.start_notify(
-        #    "E21D0104-AE5F-11EB-8529-0242AC130003", getattr(self, "_notification_handler_control")
-        #)
 
     async def _connect(self) -> None:
         """Connect to the BMS and setup notification if not connected."""
@@ -238,18 +237,18 @@ class BaseBMS(ABC):
         return bool(char_tx and "write" in getattr(char_tx, "properties", []))
 
     async def _send_msg(
-        self,
-        data: bytes,
-        max_size: int,
-        char: int | str,
-        attempt: int,
-        inv_wr_mode: bool = False,
+            self,
+            data: bytes,
+            max_size: int,
+            char: int | str,
+            attempt: int,
+            inv_wr_mode: bool = False,
     ) -> None:
         """Send message to the bms in chunks if needed."""
         chunk_size: Final[int] = max_size or len(data)
 
         for i in range(0, len(data), chunk_size):
-            chunk: bytes = data[i : i + chunk_size]
+            chunk: bytes = data[i: i + chunk_size]
             self._log.debug(
                 "TX BLE req #%i (%s%s%s): %s",
                 attempt + 1,
@@ -265,16 +264,16 @@ class BaseBMS(ABC):
             )
 
     async def _await_reply(
-        self,
-        data: bytes,
-        char: int | str | None = None,
-        wait_for_notify: bool = True,
-        max_size: int = 0,
+            self,
+            data: bytes,
+            char: int | str | None = None,
+            wait_for_notify: bool = True,
+            max_size: int = 0,
     ) -> None:
         """Send data to the BMS and wait for valid reply notification."""
 
         for inv_wr_mode in (
-            [False, True] if self._inv_wr_mode is None else [self._inv_wr_mode]
+                [False, True] if self._inv_wr_mode is None else [self._inv_wr_mode]
         ):
             try:
                 for attempt in range(BaseBMS.MAX_RETRY):
@@ -287,7 +286,7 @@ class BaseBMS(ABC):
                             await asyncio.wait_for(
                                 self._wait_event(),
                                 BLEAK_TRANSIENT_BACKOFF_TIME
-                                * min(2**attempt, BaseBMS._MAX_TIMEOUT_FACTOR),
+                                * min(2 ** attempt, BaseBMS._MAX_TIMEOUT_FACTOR),
                             )
                     except TimeoutError:
                         self._log.debug("TX BLE request timed out.")
@@ -322,49 +321,6 @@ class BaseBMS(ABC):
         await self._data_event.wait()
         self._data_event.clear()
 
-
-
-    async def associate(self) -> None:
-        if not self.client.is_connected:
-            await self.client.connect()
-        random_key = await self.client.read_gatt_char("3BEF0201-F30A-DF90-4A4C-74B6EB69184F")
-        self._log.debug(f"random key {random_key.hex()}")
-
-        shared_key = await  self.client.read_gatt_char("3BEF0202-F30A-DF90-4A4C-74B6EB69184F")
-        self._log.debug(f"shared key {shared_key.hex()}")
-        if all(b == 0 for b in shared_key):
-            self._log.debug("asic not in pairing mode")
-            #return
-
-        secret = bytearray([
-            0x11, 0x41, 0xa8, 0x05,
-            0x37, 0x44, 0x4a, 0x6a,
-            0x85, 0x88, 0x8d, 0x84,
-            0x11, 0x5f, 0x28, 0x11
-        ])
-
-
-        #shared = bytearray([
-        #    0xe1,0x11,0x3a,0xcf,0x80,0x6e,0x36,0x02
-        #])
-        #random =  bytearray([
-        #    0xe6,0xbe, 0xe1,0x27,0x27,0x7f,0x73,0xdd
-        #])
-        shared_key.reverse()
-        random_key.reverse()
-
-        cipher = AES.new(secret,AES.MODE_ECB)
-        #encrypt_key = cipher.encrypt(shared + random)
-        encrypt_key = cipher.encrypt(shared_key+random_key)
-        encrypt_key_barray = bytearray(encrypt_key)
-        encrypt_key_barray.reverse()
-
-        self._log.debug(f"encrypt key {encrypt_key_barray.hex()}")
-
-        write_encrypt_response = await  self.client.write_gatt_char("3BEF0203-F30A-DF90-4A4C-74B6EB69184F",encrypt_key_barray,True)
-
-        #self._log.debug(f"encrypt key {write_encrypt_response.hex()}")
-
     @abstractmethod
     async def _async_update(self) -> BMSsample:
         """Return a dictionary of BMS values (keys need to come from the SENSOR_TYPES list)."""
@@ -394,6 +350,55 @@ class BaseBMS(ABC):
     @property
     def client(self):
         return self._client
+
+    async def _associate_asic(self) -> None:
+
+        random_key = await self.client.read_gatt_char(self.CHARACTERISTIC_SYSTEM_RANDOMKEY_UUID)
+        self._log.debug(f"random key {random_key.hex()}")
+
+        shared_key = await  self.client.read_gatt_char(self.CHARACTERISTIC_SYSTEM_SHAREDKEY_UUID)
+        self._log.debug(f"shared key {shared_key.hex()}")
+        if all(b == 0 for b in shared_key):
+            self._log.debug("asic not in pairing mode")
+            saved_data = await self._store.async_load()
+            if saved_data:
+                decoded_data = saved_data.get("last_data")
+                if decoded_data:
+                    original_bytes = bytearray(bytes.fromhex(decoded_data))
+                    if all(b == 0 for b in original_bytes):
+                        self._log.error("No shared key saved in storage. Abort.")
+                        return
+                    else:
+                        shared_key = original_bytes
+                else:
+                    self._log.error("No 'last_data' found in storage. Abort.")
+                    return
+            else:
+                self._log.error("No saved data found in storage. Abort.")
+                return
+
+        decoded_shared_key = shared_key.hex()
+        self._log.debug(f"save shared key to store {decoded_shared_key}")
+        await self._store.async_save({"last_data": decoded_shared_key})
+
+        secret = bytearray([
+            0x11, 0x41, 0xa8, 0x05,
+            0x37, 0x44, 0x4a, 0x6a,
+            0x85, 0x88, 0x8d, 0x84,
+            0x11, 0x5f, 0x28, 0x11
+        ])
+
+        shared_key.reverse()
+        random_key.reverse()
+
+        cipher = AES.new(secret, AES.MODE_ECB)
+        encrypt_key = cipher.encrypt(shared_key + random_key)
+        self.encrypt_key_barray = bytearray(encrypt_key)
+        self.encrypt_key_barray.reverse()
+
+        self._log.debug(f"encrypt key {self.encrypt_key_barray.hex()}")
+
+        await  self.client.write_gatt_char(self.CHARACTERISTIC_SYSTEM_ENCRYPTKEY_UUID, self.encrypt_key_barray, True)
 
 
 def crc_modbus(data: bytearray) -> int:

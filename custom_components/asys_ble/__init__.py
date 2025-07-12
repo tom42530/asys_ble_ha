@@ -13,6 +13,7 @@ from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.importlib import async_import_module
+from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, LOGGER
 from .coordinator import BTBmsCoordinator
@@ -50,7 +51,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: BTBmsConfigEntry) -> boo
         )
 
     plugin: ModuleType = await async_import_module(hass, entry.data["type"])
-    coordinator = BTBmsCoordinator(hass, ble_device, plugin.BMS(ble_device), entry)
+
+    store = Store(hass, 1, f"bms_{entry.entry_id}")
+    bms_instance = plugin.BMS(ble_device, store)
+    coordinator = BTBmsCoordinator(hass, ble_device, bms_instance, entry)
+
 
     # Query the device the first time, initialise coordinator.data
     await coordinator.async_config_entry_first_refresh()
