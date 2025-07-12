@@ -76,6 +76,7 @@ class AsicLightEntity(CoordinatorEntity[BTBmsCoordinator],
         await self.coordinator._device.turn_on_off_light(True)
         self.coordinator.data["light_state"] = True
         self.async_write_ha_state()
+        self.coordinator.async_update_listeners()
         return
 
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -83,6 +84,7 @@ class AsicLightEntity(CoordinatorEntity[BTBmsCoordinator],
         await self.coordinator._device.turn_on_off_light(False)
         self.coordinator.data["light_state"] = False
         self.async_write_ha_state()
+        self.coordinator.async_update_listeners()
         return
 
     @property

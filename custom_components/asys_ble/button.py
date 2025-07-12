@@ -1,64 +1,44 @@
 """Support for asys_BLE binary sensors."""
 
-from collections.abc import Callable
-
-from custom_components.asys_ble.plugins.basebms import  BMSsample
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
-    BinarySensorEntity,
-    BinarySensorEntityDescription,
 )
-
 from homeassistant.components.button import (
     ButtonEntity,
-    ButtonEntityDescription,
-    ButtonDeviceClass,
+    ButtonEntityDescription, ButtonDeviceClass,
 )
-
-
-from homeassistant.const import ATTR_BATTERY_CHARGING, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import BTBmsConfigEntry
-from .const import ATTR_PROBLEM, DOMAIN
-from .coordinator import BTBmsCoordinator
 from .const import (
     DOMAIN,
     LOGGER,
 )
+from .coordinator import BTBmsCoordinator
 
 
-PARALLEL_UPDATES = 0
+class AsicButtonEntityDescription(ButtonEntityDescription):
+    pass
 
 
-class BmsButtonEntityDescription(ButtonEntityDescription, frozen_or_thawed=True):
-    """Describes BMS sensor entity."""
-
-    attr_fn: Callable[[BMSsample], dict[str, int | str]] | None = None
-
-
-BUTTON_TYPES: list[BmsButtonEntityDescription] = [
-    BmsButtonEntityDescription(
-        key="filtration_hors_gel_state",
+BUTTON_TYPES: list[AsicButtonEntityDescription] = [
+    AsicButtonEntityDescription(
+        key="bt_light_color",
         name="Change light color",
-        icon = "mdi:snowflake-alert",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        attr_fn=lambda data: (
-            {"filtration_hors_gel_state": data.get("filtration_hors_gel_state", False)}
-            if "filtration_hors_gel_state" in data
-            else {}
-        ),
+        icon="mdi:lightbulb",
+        device_class=ButtonDeviceClass.UPDATE,
+
     ),
 ]
 
 
 async def async_setup_entry(
-    _hass: HomeAssistant,
-    config_entry: BTBmsConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+        _hass: HomeAssistant,
+        config_entry: BTBmsConfigEntry,
+        async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add sensors for passed config_entry in Home Assistant."""
 
@@ -69,43 +49,32 @@ async def async_setup_entry(
         )
 
 
-class BMSButtonEntity(CoordinatorEntity[BTBmsCoordinator], ButtonEntity):  # type: ignore[reportIncompatibleMethodOverride]
-    """The generic BMS binary sensor implementation."""
+class BMSButtonEntity(CoordinatorEntity[BTBmsCoordinator],
+                      ButtonEntity):  # type: ignore[reportIncompatibleMethodOverride]
 
-    entity_description: BmsButtonEntityDescription
+    entity_description: AsicButtonEntityDescription
 
     def __init__(
-        self,
-        bms: BTBmsCoordinator,
-        descr: BmsButtonEntityDescription,
-        unique_id: str,
+            self,
+            bms: BTBmsCoordinator,
+            descr: AsicButtonEntityDescription,
+            unique_id: str,
     ) -> None:
-        """Intialize BMS binary sensor."""
         self._attr_unique_id = f"{DOMAIN}-{unique_id}-{descr.key}"
         self._attr_device_info = bms.device_info
         self._attr_has_entity_name = True
-        self.entity_description: BmsBinaryEntityDescription = descr  # type: ignore[reportIncompatibleVariableOverride]
+        self.entity_description: AsicButtonEntityDescription = descr  # type: ignore[reportIncompatibleVariableOverride]
         super().__init__(bms)
-
-    # def press(self) -> None:
-    #     LOGGER.debug("button press")
-    #     self.coordinator.associate()
-    #     pass
 
     async def async_press(self) -> None:
         LOGGER.debug("button press")
         return await self.coordinator._device.change_light_color()
 
     @property
-    def is_on(self) -> bool | None:  # type: ignore[reportIncompatibleVariableOverride]
-        """Handle updated data from the coordinator."""
-        return bool(self.coordinator.data.get(self.entity_description.key))
+    def available(self) -> bool:
+        return (not self.coordinator.data.get('pairing_state', True)) and self.coordinator.data["light_state"]
 
-    @property
-    def extra_state_attributes(self) -> dict[str, int | str] | None:  # type: ignore[reportIncompatibleVariableOverride]
-        """Return entity specific state attributes, e.g. cell voltages."""
-        return (
-            fn(self.coordinator.data)
-            if (fn := self.entity_description.attr_fn)
-            else None
-        )
+    # @property
+    # def is_on(self) -> bool | None:  # type: ignore[reportIncompatibleVariableOverride]
+    #     """Handle updated data from the coordinator."""
+    #     return bool(self.coordinator.data.get(self.entity_description.key))
