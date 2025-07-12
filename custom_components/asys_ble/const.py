@@ -36,3 +36,4 @@ ATTR_PROBLEM_CODE: Final[str] = "problem_code"  # [int]
 ATTR_RSSI: Final[str] = "rssi"  # [dBm]
 ATTR_RUNTIME: Final[str] = "runtime"  # [s]
 ATTR_TEMP_SENSORS: Final[str] = "temperature_sensors"  # [°C]
+DEFAULT_SCAN_INTERVAL = 30

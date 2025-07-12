@@ -22,6 +22,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import  DOMAIN, LOGGER, ASYS_DEVICE_TYPES
+from .options_flow import AsysBleOptionsFlowHandler
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -69,7 +70,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.error("Invalid asys plugin %s", asys_type)
         return None
 
-
+    def async_get_options_flow(config_entry):
+        return AsysBleOptionsFlowHandler(config_entry)
 
     async def async_step_bluetooth(
         self, discovery_info: BluetoothServiceInfoBleak
