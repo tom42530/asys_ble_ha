@@ -81,91 +81,37 @@ class BMS(BaseBMS):
         """Return 16-bit UUID of characteristic that provides write property."""
         return "fff2"
 
-    @staticmethod
-    def _calc_values() -> frozenset[BMSvalue]:
-        return frozenset(
-            {
-                "cycle_capacity",
-                "power",
-                "battery_charging",
-                "runtime",
-                "temperature",
-            }
-        )
 
-    # def _notification_handler_control(
-    #    self, _sender: BleakGATTCharacteristic, data: bytearray
-    # ) -> None:
-    #    self._log.debug("RX BLE data_control: %s", data)
-    #    self._data_control = data
 
-    def _notification_handler(
-            self, _sender: BleakGATTCharacteristic, data: bytearray
-    ) -> None:
-        self._log.debug("RX BLE data: %s", data.hex())
-        self._data = data
-        self._data_event.set()
 
-    @staticmethod
-    def _cell_voltages(data: bytearray, cells: int) -> list[float]:
-        return [
-            int.from_bytes(
-                data[BMS.HEAD_LEN + 2 * idx: BMS.HEAD_LEN + 2 * idx + 2],
-                byteorder="big",
-                signed=True,
-            )
-            / 1000
-            for idx in range(cells)
-        ]
 
-    @staticmethod
-    def _temp_sensors(data: bytearray, sensors: int, offs: int) -> list[float]:
-        return [
-            float(
-                int.from_bytes(data[idx: idx + 2], byteorder="big", signed=True) - 40
-            )
-            for idx in range(offs, offs + sensors * 2, 2)
-        ]
+
+
 
     async def _async_update(self) -> BMSsample:
         """Update battery status information."""
         data: BMSsample = {}
-        self._log.debug(f"waiting status notify")
+
         try:
-            result = await asyncio.wait_for(self._data_event.wait(), timeout=5)
-            # print(result)
-        except asyncio.TimeoutError:
-            self._log.debug("timeout during waiting event")
-        # await self._data_event.wait()
-        self._log.debug("status notify recived")
+            await self._associate_asic()
+            control_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEO_CONTROL_UUID)
+            self._log.debug(f"read control {control_value.hex()}")
+            data["light_state"] = control_value[2] != 0
+            data["filtration_mode_state"] = control_value[1]
 
-        # self._data = await self._client.read_gatt_char("3BEF0201-F30A-DF90-4A4C-74B6EB69184F")
-        # await self._client.read_gatt_char("3BEF0201-F30A-DF90-4A4C-74B6EB69184F")
-
-        if len(self._data) >= 17:
-            self._data_event.clear()
-            data["water_temperature"] = self._data[14]
-            data["air_temperature"] = self._data[16]
-            data["current"] = self._data[12] / 10
-            data["cycles"] = int.from_bytes(self._data[8:12], byteorder='little',
+            status_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEO_STATUS_UUID)
+            data["water_temperature"] = status_value[14]
+            data["air_temperature"] = status_value[16]
+            data["current"] = status_value[12] / 10
+            data["cycles"] = int.from_bytes(status_value[8:12], byteorder='little',
                                             signed=False)  # (self._data[11] << 24) +(self._data[10] << 16)+(self._data[9] << 8) +self._data[8] #(x[11] << 24) + (x[10] << 16) +(x[9] << 8) + x[8];
-            data["runtime"] = int.from_bytes(self._data[4:8], byteorder='little', signed=False)  # runtime
-            data["filtration_hors_gel_state"] = bool(self._data[0])
-            data["filtration_24_24_state"] = bool(self._data[1])
-            data["filtration_state"] = bool(self._data[2])
-            data["surcharge_protection_state"] = bool(self._data[3])
-            data["pairing_state"] = True
-        else:
-            self._log.error("data empty")
-        # test
-        # list_service = await self._client.get_services()
-        # for service in list_service:
-        #     self._log.info(f"🔧 Service: {service.uuid}")
-        #
-        #     for char in service.characteristics:
-        #         self._log.info(f"  📗 Characteristic: {char.uuid} (propriétés: {char.properties})")
+            data["runtime"] = int.from_bytes(status_value[4:8], byteorder='little', signed=False)  # runtime
+            data["filtration_hors_gel_state"] = bool(status_value[0])
+            data["filtration_24_24_state"] = bool(status_value[1])
+            data["filtration_state"] = bool(status_value[2])
+            data["surcharge_protection_state"] = bool(status_value[3])
+            data["pairing_state"] = False
 
-        try:
             model_name = await self._client.read_gatt_char("00002a24-0000-1000-8000-00805f9b34fb")
             self._log.info(f"model name: {model_name.decode('utf-8')}")
             serial_number = await self._client.read_gatt_char("00002a25-0000-1000-8000-00805f9b34fb")
@@ -175,44 +121,12 @@ class BMS(BaseBMS):
             hardware_version = await self._client.read_gatt_char("00002a27-0000-1000-8000-00805f9b34fb")
             self._log.info(f"hardware_version: {hardware_version.decode('utf-8')}")
 
-            # NEED AUTH
-            # time_date_time = await self._client.read_gatt_char("00002a08-0000-1000-8000-00805f9b34fb")
-            # self._log.info(f"date_time: {time_date_time.decode('utf-8')}")
-            # time_day = await self._client.read_gatt_char("00002a09-0000-1000-8000-00805f9b34fb")
-            # self._log.info(f"day: {time_day.decode('utf-8')}")
-            # char_installation = await self._client.read_gatt_char("e21d0101-ae5f-11eb-8529-0242ac130003")
-            # self._log.info(f"char_installation: {char_installation.decode('utf-8')}")
-            # char_parametrage_main = await self._client.read_gatt_char("e21d0102-ae5f-11eb-8529-0242ac130003")
-            # self._log.info(f"char_parametrage_main: {char_parametrage_main.decode('utf-8')}")
-            # char_parametrage_hecl = await self._client.read_gatt_char("e21d0103-ae5f-11eb-8529-0242ac130003")
-            # self._log.info(f"char_parametrage_hecl: {char_installation.decode('utf-8')}")
-
             manufacturer = await self._client.read_gatt_char("00002a00-0000-1000-8000-00805f9b34fb")
             self._log.info(f"inconnu: {manufacturer.decode('utf-8')}")
             inconnu1 = await self._client.read_gatt_char("00002a01-0000-1000-8000-00805f9b34fb")
             self._log.info(f"inconnu1: {inconnu1}")
             inconnu2 = await self._client.read_gatt_char("00002a04-0000-1000-8000-00805f9b34fb")
             self._log.info(f"inconnu2: {inconnu2}")
-            # fin test
-        except BleakError as e:
-            self._log.error(f"error during test{e}")
-        try:
-            await self._associate_asic()
-            control_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEO_CONTROL_UUID)
-            self._log.debug(f"read control {control_value.hex()}")
-            data["light_state"] = control_value[2] != 0
-            data["pairing_state"] = False
-
-            # time_date_time = await self._client.read_gatt_char("00002a08-0000-1000-8000-00805f9b34fb")
-            # self._log.info(f"date_time: {time_date_time.decode('utf-8')}")
-            # time_day = await self._client.read_gatt_char("00002a09-0000-1000-8000-00805f9b34fb")
-            # self._log.info(f"day: {time_day.decode('utf-8')}")
-            # char_installation = await self._client.read_gatt_char("3BEF0101-F30A-DF90-4A4C-74B6EB69184F")
-            # self._log.info(f"char_installation: {char_installation.hex()}")
-            # char_parametrage_main = await self._client.read_gatt_char("3BEF0102-F30A-DF90-4A4C-74B6EB69184F")
-            # self._log.info(f"char_parametrage_main: {char_parametrage_main.hex()}")
-            # char_parametrage_hppe = await self._client.read_gatt_char("3BEF0103-F30A-DF90-4A4C-74B6EB69184F")
-            # self._log.info(f"char_parametrage_hecl: {char_parametrage_hppe.hex()}")
         except BleakError as e:
             data["pairing_state"] = True
             self._log.error(f"read control error trying associate{e}")
@@ -232,5 +146,18 @@ class BMS(BaseBMS):
         control_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEO_CONTROL_UUID)
         self._log.debug(f"read control {control_value}")
         control_value[3] = 1
+        await self._client.write_gatt_char(BMS.CHARACTERISTIC_PRECISEO_CONTROL_UUID, control_value)
+        return
+
+    async def set_filtration_mode(self,option: str) -> None:
+        self._log.debug(f"Set filtration mode to {option}")
+        control_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEO_CONTROL_UUID)
+        self._log.debug(f"read control {control_value}")
+        if option == 'OFF':
+            control_value[1] = 0
+        elif option == 'ON':
+            control_value[1] = 1
+        else :
+            control_value[1] = 2
         await self._client.write_gatt_char(BMS.CHARACTERISTIC_PRECISEO_CONTROL_UUID, control_value)
         return

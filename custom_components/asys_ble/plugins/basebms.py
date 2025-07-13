@@ -63,6 +63,7 @@ class BMSsample(TypedDict, total=False):
     temp_sensors: int  # [#]
     temp_values: list[int | float]  # [°C]
     light_state: bool
+    filtration_mode_state: int
 
 
 class AdvertisementPattern(TypedDict, total=False):
@@ -98,9 +99,7 @@ class BaseBMS(ABC):
     ) -> None:
         """Intialize the BMS.
 
-        notification_handler: the callback function used for notifications from 'uuid_rx()'
-            characteristic. Not defined as abstract in this base class, as it can be both,
-            a normal or async function
+
 
         Args:
             logger_name (str): name of the logger for the BMS instance (usually file name)
@@ -108,9 +107,7 @@ class BaseBMS(ABC):
             reconnect (bool): if true, the connection will be closed after each update
 
         """
-        assert (
-                getattr(self, "_notification_handler", None) is not None
-        ), "BMS class must define _notification_handler method"
+
         self._ble_device: Final[BLEDevice] = ble_device
         self._reconnect: Final[bool] = reconnect
         self.name: Final[str] = self._ble_device.name or "undefined"
@@ -169,27 +166,14 @@ class BaseBMS(ABC):
     def uuid_services() -> list[str]:
         """Return list of 128-bit UUIDs of services required by BMS."""
 
-    @staticmethod
-    @abstractmethod
-    def uuid_rx() -> str:
-        """Return 16-bit UUID of characteristic that provides notification/read property."""
+
 
     @staticmethod
     @abstractmethod
     def uuid_tx() -> str:
         """Return 16-bit UUID of characteristic that provides write property."""
 
-    @staticmethod
-    def _calc_values() -> frozenset[BMSvalue]:
-        """Return values that the BMS cannot provide and need to be calculated.
 
-        See _add_missing_values() function for the required input to actually do so.
-        """
-        return frozenset()
-
-    @staticmethod
-    def _add_missing_values(data: BMSsample, values: frozenset[BMSvalue]) -> None:
-        return
 
     def _on_disconnect(self, _client: BleakClient) -> None:
         """Disconnect callback function."""
@@ -201,12 +185,9 @@ class BaseBMS(ABC):
         self._data.clear()
         self._data_event.clear()
 
-        await self._client.start_notify(
-            self.uuid_rx(), getattr(self, "_notification_handler")
-        )
 
     async def _connect(self) -> None:
-        """Connect to the BMS and setup notification if not connected."""
+        """Connect to the BMS ."""
 
         if self._client.is_connected:
             self._log.debug("BMS already connected")
@@ -339,7 +320,6 @@ class BaseBMS(ABC):
         await self._connect()
 
         data: BMSsample = await self._async_update()
-        self._add_missing_values(data, self._calc_values())
 
         if self._reconnect:
             # disconnect after data update to force reconnect next time (slow!)

@@ -1,6 +1,5 @@
 """Support for asys_BLE binary sensors."""
-
-from collections.abc import Callable
+import asyncio
 
 from homeassistant.components.select import (
     SelectEntity,
@@ -10,27 +9,23 @@ from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.asys_ble.plugins.basebms import BMSsample
 from . import BTBmsConfigEntry
 from .const import (
-    DOMAIN,
+    DOMAIN, LOGGER,
 )
 from .coordinator import BTBmsCoordinator
 
-PARALLEL_UPDATES = 0
+OPTIONS = ["OFF", "ON", "AUTO"]
 
-OPTIONS = ["mode_eco", "mode_normal", "mode_performance"]
 
 class AsysSelectEntityDescription(SelectEntityDescription):
     """Describes BMS sensor entity."""
 
-    attr_fn: Callable[[BMSsample], dict[str, int | str]] | None = None
-
 
 SELECT_TYPES: list[AsysSelectEntityDescription] = [
     AsysSelectEntityDescription(
-        key="select_tom",
-        name="lumière",
+        key="select_filtration_mode",
+        name="Mode filtration",
         options=OPTIONS,
 
     ),
@@ -73,15 +68,24 @@ class AsysSelectEntity(CoordinatorEntity[BTBmsCoordinator],
 
     @property
     def available(self) -> bool:
-        return super().available
+        return not self.coordinator.data.get('pairing_state', True)
 
-    async def async_update(self) -> None:
-        self._attr_current_option = "mode_eco"
-        #return await super().async_update()
+    # async def async_update(self) -> None:
+    #     self._attr_current_option = "mode_eco"
+    #     #return await super().async_update()
 
     async def async_select_option(self, option: str) -> None:
-        """Change the selected option."""
-        self._attr_current_option = option
+        await self.coordinator._device.set_filtration_mode(option)
+        if option == 'OFF':
+            self.coordinator.data["filtration_mode_state"] = 0
+        elif option == 'ON':
+            self.coordinator.data["filtration_mode_state"] = 1
+        else:
+            self.coordinator.data["filtration_mode_state"] = 2
+        #update select state sleep 2second and finally update all ohers entities
+        self.async_write_ha_state()
+        await asyncio.sleep(2)
+        await self.coordinator.async_request_refresh()
 
 
     @property
@@ -90,4 +94,11 @@ class AsysSelectEntity(CoordinatorEntity[BTBmsCoordinator],
 
     @property
     def current_option(self) -> str | None:
-        return self._attr_current_option
+        LOGGER.debug(
+            f"filtration_mode_state current_option : : {self.coordinator.data.get("filtration_mode_state", 0)}")
+        if self.coordinator.data.get("filtration_mode_state", 0) == 0:
+            return "OFF"
+        elif self.coordinator.data.get("filtration_mode_state", 0) == 1:
+            return "ON"
+        else:
+            return "AUTO"
