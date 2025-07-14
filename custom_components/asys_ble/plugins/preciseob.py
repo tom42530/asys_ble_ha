@@ -186,8 +186,8 @@ class BMS(BaseBMS):
         await self._client.write_gatt_char(BMS.CHARACTERISTIC_PRECISEOB_CONTROL_UUID, control_value)
         return
 
-    async def set_filtration_mode(self,option: str) -> None:
-        self._log.debug(f"Set filtration mode to {option}")
+    async def set_filtration_mode_state(self,option: str) -> None:
+        self._log.debug(f"Set filtration mode state to {option}")
         control_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEOB_CONTROL_UUID)
         self._log.debug(f"read control {control_value}")
         if option == 'OFF':
@@ -196,5 +196,13 @@ class BMS(BaseBMS):
             control_value[1] = 1
         else :
             control_value[1] = 2
+        await self._client.write_gatt_char(BMS.CHARACTERISTIC_PRECISEOB_CONTROL_UUID, control_value)
+        return
+
+    async def set_filtration_mode(self,option: int) -> None:
+        self._log.debug(f"Set filtration mode to {option}")
+        control_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEOB_CONTROL_UUID)
+        self._log.debug(f"read control {control_value}")
+        control_value[0] = option
         await self._client.write_gatt_char(BMS.CHARACTERISTIC_PRECISEOB_CONTROL_UUID, control_value)
         return

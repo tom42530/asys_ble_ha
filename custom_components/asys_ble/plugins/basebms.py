@@ -64,6 +64,7 @@ class BMSsample(TypedDict, total=False):
     temp_values: list[int | float]  # [°C]
     light_state: bool
     filtration_mode_state: int
+    filtration_mode: int
     manufacturer: str
     model:str
     hw_version: str

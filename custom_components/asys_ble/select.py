@@ -15,21 +15,28 @@ from .const import (
 )
 from .coordinator import BTBmsCoordinator
 
-OPTIONS = ["OFF", "ON", "AUTO"]
+OPTIONS_FILTRATION_STATE_MODE = ["OFF", "ON", "AUTO"]
+OPTIONS_FILTRATION_MODE =["Automatique (Loi d'eau)","Horloge 72h","Horloge Usine 1","Horloge Usine 2","Horloge Usine 3","Horloge Personnalisable Eté","Horloge Personnalisable Hivers"]
+
 
 
 class AsysSelectEntityDescription(SelectEntityDescription):
     """Describes BMS sensor entity."""
 
 
-SELECT_TYPES: list[AsysSelectEntityDescription] = [
-    AsysSelectEntityDescription(
-        key="select_filtration_mode",
-        name="Mode filtration",
-        options=OPTIONS,
+filtrationStateModeEntityDescription=AsysSelectEntityDescription(
+        key="select_filtration_mode_state",
+        name="état filtration",
+        options=OPTIONS_FILTRATION_STATE_MODE,
 
-    ),
-]
+    )
+
+filtrationModeEntityDescription=AsysSelectEntityDescription(
+        key="select_filtration_mode",
+        name="mode filtration",
+        options=OPTIONS_FILTRATION_MODE,
+
+    )
 
 
 async def async_setup_entry(
@@ -40,13 +47,16 @@ async def async_setup_entry(
     """Add sensors for passed config_entry in Home Assistant."""
 
     bms: BTBmsCoordinator = config_entry.runtime_data
-    for descr in SELECT_TYPES:
-        async_add_entities(
-            [AsysSelectEntity(bms, descr, format_mac(config_entry.unique_id))]
-        )
+    async_add_entities(
+        [AsysSelectFiltrationModeStateEntity(bms, filtrationStateModeEntityDescription, format_mac(config_entry.unique_id))]
+    )
+    async_add_entities(
+        [AsysSelectFiltrationModeEntity(bms, filtrationModeEntityDescription, format_mac(config_entry.unique_id))]
+    )
 
 
-class AsysSelectEntity(CoordinatorEntity[BTBmsCoordinator],
+
+class AsysSelectFiltrationModeStateEntity(CoordinatorEntity[BTBmsCoordinator],
                        SelectEntity):  # type: ignore[reportIncompatibleMethodOverride]
     """The generic BMS binary sensor implementation."""
 
@@ -61,7 +71,7 @@ class AsysSelectEntity(CoordinatorEntity[BTBmsCoordinator],
         """Intialize BMS binary sensor."""
         self._attr_unique_id = f"{DOMAIN}-{unique_id}-{descr.key}"
         self._attr_device_info = bms.device_info
-        self._attr_current_option = "mode_eco"
+        self._attr_current_option = "nc"
         self._attr_has_entity_name = True
         self.entity_description: AsysSelectEntityDescription = descr  # type: ignore[reportIncompatibleVariableOverride]
         super().__init__(bms)
@@ -70,12 +80,10 @@ class AsysSelectEntity(CoordinatorEntity[BTBmsCoordinator],
     def available(self) -> bool:
         return not self.coordinator.data.get('pairing_state', True)
 
-    # async def async_update(self) -> None:
-    #     self._attr_current_option = "mode_eco"
-    #     #return await super().async_update()
+
 
     async def async_select_option(self, option: str) -> None:
-        await self.coordinator._device.set_filtration_mode(option)
+        await self.coordinator._device.set_filtration_mode_state(option)
         if option == 'OFF':
             self.coordinator.data["filtration_mode_state"] = 0
         elif option == 'ON':
@@ -102,3 +110,57 @@ class AsysSelectEntity(CoordinatorEntity[BTBmsCoordinator],
             return "ON"
         else:
             return "AUTO"
+
+
+
+
+
+class AsysSelectFiltrationModeEntity(CoordinatorEntity[BTBmsCoordinator],
+                       SelectEntity):  # type: ignore[reportIncompatibleMethodOverride]
+
+    entity_description: AsysSelectEntityDescription
+
+    def __init__(
+            self,
+            bms: BTBmsCoordinator,
+            descr: AsysSelectEntityDescription,
+            unique_id: str,
+    ) -> None:
+        """Intialize BMS binary sensor."""
+        self._attr_unique_id = f"{DOMAIN}-{unique_id}-{descr.key}"
+        self._attr_device_info = bms.device_info
+        self._attr_current_option = "nc"
+        self._attr_has_entity_name = True
+        self.entity_description: AsysSelectEntityDescription = descr  # type: ignore[reportIncompatibleVariableOverride]
+        super().__init__(bms)
+
+    @property
+    def available(self) -> bool:
+        return not self.coordinator.data.get('pairing_state', True)
+
+
+
+    async def async_select_option(self, option: str) -> None:
+        try:
+            index = OPTIONS_FILTRATION_MODE.index(option)
+            await self.coordinator._device.set_filtration_mode(option)
+            self.coordinator.data["filtration_mode"] = index
+            # update select state sleep 2second and finally update all ohers entities
+            self.async_write_ha_state()
+            await asyncio.sleep(2)
+            await self.coordinator.async_request_refresh()
+        except ValueError:
+            LOGGER.error(
+                f"filtration_mode unable to parse value")
+
+
+
+    @property
+    def options(self) -> list[str]:
+        return self.entity_description.options
+
+    @property
+    def current_option(self) -> str | None:
+        LOGGER.debug(
+            f"filtration_mode current_option : : {self.coordinator.data.get("filtration_mode", 0)}")
+        return OPTIONS_FILTRATION_MODE[self.coordinator.data.get("filtration_mode", 0)]
