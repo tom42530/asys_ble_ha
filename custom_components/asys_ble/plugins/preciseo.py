@@ -130,10 +130,7 @@ class BMS(BaseBMS):
             self._log.info(f"manufacturer: {manufacturer.decode('utf-8')}")
             data["manufacturer"] = manufacturer.decode('utf-8')
 
-            inconnu1 = await self._client.read_gatt_char("00002a01-0000-1000-8000-00805f9b34fb")
-            self._log.info(f"inconnu1: {inconnu1}")
-            inconnu2 = await self._client.read_gatt_char("00002a04-0000-1000-8000-00805f9b34fb")
-            self._log.info(f"inconnu2: {inconnu2}")
+            
         except BleakError as e:
             data["pairing_state"] = True
             self._log.error(f"read control error trying associate{e}")
