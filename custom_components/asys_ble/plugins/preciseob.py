@@ -91,6 +91,7 @@ class BMS(BaseBMS):
             self._log.debug(f"read control {control_value.hex()}")
             data["light_state"] = control_value[2] != 0
             data["filtration_mode_state"] = control_value[1]
+            data["filtration_mode"] = control_value[0]
 
             status_value = await self._client.read_gatt_char(BMS.CHARACTERISTIC_PRECISEOB_STATUS_UUID)
             data["water_temperature"] = status_value[14]

@@ -143,7 +143,7 @@ class AsysSelectFiltrationModeEntity(CoordinatorEntity[BTBmsCoordinator],
     async def async_select_option(self, option: str) -> None:
         try:
             index = OPTIONS_FILTRATION_MODE.index(option)
-            await self.coordinator._device.set_filtration_mode(option)
+            await self.coordinator._device.set_filtration_mode(index)
             self.coordinator.data["filtration_mode"] = index
             # update select state sleep 2second and finally update all ohers entities
             self.async_write_ha_state()
