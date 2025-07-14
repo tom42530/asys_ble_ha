@@ -64,6 +64,11 @@ class BMSsample(TypedDict, total=False):
     temp_values: list[int | float]  # [°C]
     light_state: bool
     filtration_mode_state: int
+    manufacturer: str
+    model:str
+    hw_version: str
+    sw_version:str
+    serial_number: str
 
 
 class AdvertisementPattern(TypedDict, total=False):

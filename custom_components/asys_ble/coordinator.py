@@ -168,4 +168,19 @@ class BTBmsCoordinator(DataUpdateCoordinator[BMSsample]):
         self._link_q[-1] = True  # set success
         LOGGER.debug("%s: BMS data sample %s", self.name, bms_data)
 
+        self.device_info = DeviceInfo(
+            identifiers={
+                (DOMAIN, self._mac),
+                ("bluetooth", self._mac),
+            },
+            connections={(CONNECTION_BLUETOOTH, self._mac)},
+            name=self.name,
+            manufacturer=bms_data.get("manufacturer"),
+            model=bms_data.get("model"),
+            hw_version=bms_data.get("hw_version"),
+            sw_version=bms_data.get("sw_version"),
+            serial_number=bms_data.get("serial_number"),
+        )
+
+
         return bms_data

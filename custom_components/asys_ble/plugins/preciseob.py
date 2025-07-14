@@ -58,8 +58,7 @@ class BMS(BaseBMS):
     @staticmethod
     def device_info() -> dict[str, str]:
         """Return device information for the Asys system."""
-        return {"manufacturer": "ASYS", "model": "ASYSPRECISEO", "hw_version": "P00021C-I", "sw_version": "I1.05 M0.19",
-                "serial_number": "19320001"}
+        return {}
 
     @staticmethod
     def uuid_services() -> list[str]:
@@ -133,12 +132,16 @@ class BMS(BaseBMS):
         try:
             model_name = await self._client.read_gatt_char("00002a24-0000-1000-8000-00805f9b34fb")
             self._log.info(f"model name: {model_name.decode('utf-8')}")
+            data["model"]=model_name.decode('utf-8')
             serial_number = await self._client.read_gatt_char("00002a25-0000-1000-8000-00805f9b34fb")
             self._log.info(f"serial_number: {serial_number.decode('utf-8')}")
+            data["serial_number"] = serial_number.decode('utf-8')
             firmware_version = await self._client.read_gatt_char("00002a26-0000-1000-8000-00805f9b34fb")
             self._log.info(f"firmware_version: {firmware_version.decode('utf-8')}")
+            data["sw_version"] = firmware_version.decode('utf-8')
             hardware_version = await self._client.read_gatt_char("00002a27-0000-1000-8000-00805f9b34fb")
             self._log.info(f"hardware_version: {hardware_version.decode('utf-8')}")
+            data["hw_version"] = hardware_version.decode('utf-8')
 
             # NEED AUTH
             # time_date_time = await self._client.read_gatt_char("00002a08-0000-1000-8000-00805f9b34fb")
@@ -153,7 +156,9 @@ class BMS(BaseBMS):
             # self._log.info(f"char_parametrage_hecl: {char_installation.decode('utf-8')}")
 
             manufacturer = await self._client.read_gatt_char("00002a00-0000-1000-8000-00805f9b34fb")
-            self._log.info(f"inconnu: {manufacturer.decode('utf-8')}")
+            self._log.info(f"manufacturer: {manufacturer.decode('utf-8')}")
+            data["manufacturer"] = manufacturer.decode('utf-8')
+
             inconnu1 = await self._client.read_gatt_char("00002a01-0000-1000-8000-00805f9b34fb")
             self._log.info(f"inconnu1: {inconnu1}")
             inconnu2 = await self._client.read_gatt_char("00002a04-0000-1000-8000-00805f9b34fb")
