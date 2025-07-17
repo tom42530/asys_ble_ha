@@ -1,8 +1,8 @@
-"""Support for BMS_BLE binary sensors."""
+"""Support for asys_BLE binary sensors."""
 
 from collections.abc import Callable
 
-from custom_components.bms_ble.plugins.basebms import BMSmode, BMSsample
+from custom_components.asys_ble.plugins.basebms import  BMSsample
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,

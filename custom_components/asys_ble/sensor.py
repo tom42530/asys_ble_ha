@@ -1,10 +1,11 @@
 """Platform for sensor integration."""
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import Final, cast
 
-from custom_components.bms_ble.plugins.basebms import BMSpackvalue, BMSsample
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from custom_components.asys_ble.plugins.basebms import  BMSsample
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription,RestoreEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     ATTR_BATTERY_LEVEL,
@@ -50,15 +51,7 @@ class BmsEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
     attr_fn: Callable[[BMSsample], dict[str, list[int | float]]] | None = None
 
 
-def _attr_pack(
-    data: BMSsample, key: BMSpackvalue, default: list[int | float]
-) -> dict[str, list[int | float]]:
-    """Return a dictionary with the given key and default value."""
-    return (
-        {str(key): cast("list[int | float]", data.get(key, default))}
-        if key in data
-        else {}
-    )
+
 
 
 SENSOR_TYPES: Final[list[BmsEntityDescription]] = [
@@ -114,12 +107,20 @@ SENSOR_TYPES: Final[list[BmsEntityDescription]] = [
         ),
     ),
     BmsEntityDescription(
+        key="pump_power",
+        name="consommation pompe",
+        translation_key="pump_power",
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda data: None,
+    ),
+    BmsEntityDescription(
         key=ATTR_CYCLES,
         translation_key=ATTR_CYCLES,
         name="Cycles",
         state_class=SensorStateClass.TOTAL_INCREASING,
         value_fn=lambda data: data.get("cycles"),
-        attr_fn=lambda data: _attr_pack(data, "cycles", [0]),
     ),
     BmsEntityDescription(
         key=ATTR_RUNTIME,
@@ -170,7 +171,54 @@ async def async_setup_entry(
         if descr.key == ATTR_LQ:
             async_add_entities([LQSensor(bms, descr, mac)])
             continue
+        if descr.key == "pump_power":
+            async_add_entities([AsysEnergySensor(bms, descr, mac)])
+            continue
         async_add_entities([BMSSensor(bms, descr, mac)])
+
+
+
+class AsysEnergySensor(RestoreEntity,SensorEntity):  # type: ignore[reportIncompatibleMethodOverride]
+
+    _attr_has_entity_name = True
+    entity_description: BmsEntityDescription
+
+    def __init__(
+        self, bms: BTBmsCoordinator, descr: BmsEntityDescription, unique_id: str
+    ) -> None:
+        """Intitialize the BMS sensor."""
+        self._attr_unique_id = f"{DOMAIN}-{unique_id}-{descr.key}-{descr.name}"
+        self._attr_device_info = bms.device_info
+        self.entity_description = descr  # type: ignore[reportIncompatibleVariableOverride]
+        self._last_update = None
+        self._bms: Final[BTBmsCoordinator] = bms
+        self._last_state = None
+        self._energy_wh = 0.0
+
+    async def async_added_to_hass(self):
+        self._last_state= await self.async_get_last_state()
+        try:
+            self._energy_wh = float(self._last_state.state)
+        except ValueError:
+            self._energy_wh = 0.0
+
+
+
+    async def async_update(self) -> None:
+
+        intensity = self._bms.data.get("current")
+        power_w = intensity * 230
+        now_time = datetime.now()
+        if self._last_update is not None:
+            delta = (now_time - self._last_update).total_seconds() / 3600  # en heures
+            energy_added = power_w * delta  # P * t = Wh
+            self._energy_wh += energy_added
+        self._last_update = now_time
+        self._attr_native_value = round(self._energy_wh, 2)
+        self._attr_available = True
+        self.async_write_ha_state()
+
+
 
 
 class BMSSensor(CoordinatorEntity[BTBmsCoordinator], SensorEntity):  # type: ignore[reportIncompatibleMethodOverride]

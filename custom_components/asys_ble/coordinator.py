@@ -32,11 +32,13 @@ class BTBmsCoordinator(DataUpdateCoordinator[BMSsample]):
     ) -> None:
         """Initialize BMS data coordinator."""
         assert ble_device.address is not None
+        scan_interval = config_entry.options.get("scan_interval", 30)
+        LOGGER.debug(f"scan interval : {scan_interval}")
         super().__init__(
             hass=hass,
             logger=LOGGER,
             name=ble_device.address,
-            update_interval=timedelta(seconds=5),
+            update_interval=timedelta(seconds=scan_interval),
             always_update=False,  # only update when sensor value has changed
             config_entry=config_entry,
         )
@@ -165,5 +167,20 @@ class BTBmsCoordinator(DataUpdateCoordinator[BMSsample]):
 
         self._link_q[-1] = True  # set success
         LOGGER.debug("%s: BMS data sample %s", self.name, bms_data)
+
+        self.device_info = DeviceInfo(
+            identifiers={
+                (DOMAIN, self._mac),
+                ("bluetooth", self._mac),
+            },
+            connections={(CONNECTION_BLUETOOTH, self._mac)},
+            name=self.name,
+            manufacturer=bms_data.get("manufacturer"),
+            model=bms_data.get("model"),
+            hw_version=bms_data.get("hw_version"),
+            sw_version=bms_data.get("sw_version"),
+            serial_number=bms_data.get("serial_number"),
+        )
+
 
         return bms_data

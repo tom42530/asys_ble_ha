@@ -13,6 +13,7 @@ from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.importlib import async_import_module
+from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, LOGGER
 from .coordinator import BTBmsCoordinator
@@ -50,7 +51,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: BTBmsConfigEntry) -> boo
         )
 
     plugin: ModuleType = await async_import_module(hass, entry.data["type"])
-    coordinator = BTBmsCoordinator(hass, ble_device, plugin.BMS(ble_device), entry)
+
+    store = Store(hass, 1, f"bms_{entry.entry_id}")
+    bms_instance = plugin.BMS(ble_device, store)
+    coordinator = BTBmsCoordinator(hass, ble_device, bms_instance, entry)
+
 
     # Query the device the first time, initialise coordinator.data
     await coordinator.async_config_entry_first_refresh()
@@ -74,44 +79,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: BTBmsConfigEntry) -> bo
     return unload_ok
 
 
-async def async_migrate_entry(
-    hass: HomeAssistant, config_entry: BTBmsConfigEntry
-) -> bool:
-    """Migrate old entry."""
 
-    if config_entry.version > 1:
-        # This means the user has downgraded from a future version
-        LOGGER.debug("Cannot downgrade from version %s", config_entry.version)
-        return False
-
-    LOGGER.debug("Migrating from version %s", config_entry.version)
-
-    if config_entry.version == 0:
-        bms_type = config_entry.data["type"]
-        if bms_type == "OGTBms":
-            new = {"type": "custom_components.bms_ble.plugins.ogt_bms"}
-        elif bms_type == "DalyBms":
-            new = {"type": "custom_components.bms_ble.plugins.daly_bms"}
-        else:
-            LOGGER.debug("Entry: %s", config_entry.data)
-            LOGGER.error(
-                "Migration from version %s.%s failed",
-                config_entry.version,
-                config_entry.minor_version,
-            )
-            return False
-
-        hass.config_entries.async_update_entry(
-            config_entry, data=new, minor_version=0, version=1
-        )
-
-    LOGGER.debug(
-        "Migration to version %s.%s successful",
-        config_entry.version,
-        config_entry.minor_version,
-    )
-
-    return True
 
 
 def migrate_sensor_entities(
