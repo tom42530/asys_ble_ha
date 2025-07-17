@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from custom_components.asys_ble.plugins.basebms import BMSmode, BMSsample
+from custom_components.asys_ble.plugins.basebms import  BMSsample
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,

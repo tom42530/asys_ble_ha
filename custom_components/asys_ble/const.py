@@ -10,9 +10,13 @@ from homeassistant.const import (  # noqa: F401  # pylint: disable=unused-import
     ATTR_VOLTAGE,
 )
 
-BMS_TYPES: Final[list[str]] = [
-    "daly_bms",   
-]  # available BMS types
+
+
+ASYS_DEVICE_TYPES: Final[list[str]] = [
+    "preciseob",
+    "preciseo"
+]  # available ASYS types
+
 DOMAIN: Final[str] = "asys_ble"
 LOGGER: Final[logging.Logger] = logging.getLogger(__package__)
 UPDATE_INTERVAL: Final[int] = 30  # [s]
@@ -32,3 +36,4 @@ ATTR_PROBLEM_CODE: Final[str] = "problem_code"  # [int]
 ATTR_RSSI: Final[str] = "rssi"  # [dBm]
 ATTR_RUNTIME: Final[str] = "runtime"  # [s]
 ATTR_TEMP_SENSORS: Final[str] = "temperature_sensors"  # [°C]
+DEFAULT_SCAN_INTERVAL = 30

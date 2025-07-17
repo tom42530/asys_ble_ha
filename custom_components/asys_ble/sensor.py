@@ -4,7 +4,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Final, cast
 
-from custom_components.asys_ble.plugins.basebms import BMSpackvalue, BMSsample
+from custom_components.asys_ble.plugins.basebms import  BMSsample
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription,RestoreEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
@@ -51,15 +51,7 @@ class BmsEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
     attr_fn: Callable[[BMSsample], dict[str, list[int | float]]] | None = None
 
 
-def _attr_pack(
-    data: BMSsample, key: BMSpackvalue, default: list[int | float]
-) -> dict[str, list[int | float]]:
-    """Return a dictionary with the given key and default value."""
-    return (
-        {str(key): cast("list[int | float]", data.get(key, default))}
-        if key in data
-        else {}
-    )
+
 
 
 SENSOR_TYPES: Final[list[BmsEntityDescription]] = [
@@ -129,7 +121,6 @@ SENSOR_TYPES: Final[list[BmsEntityDescription]] = [
         name="Cycles",
         state_class=SensorStateClass.TOTAL_INCREASING,
         value_fn=lambda data: data.get("cycles"),
-        attr_fn=lambda data: _attr_pack(data, "cycles", [0]),
     ),
     BmsEntityDescription(
         key=ATTR_RUNTIME,

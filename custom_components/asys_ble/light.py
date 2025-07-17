@@ -1,6 +1,5 @@
 """Support for asys_BLE binary sensors."""
 
-from collections.abc import Callable
 from typing import Any
 
 from homeassistant.components.light import (
@@ -13,7 +12,6 @@ from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.asys_ble.plugins.basebms import BMSsample
 from . import BTBmsConfigEntry
 from .const import (
     DOMAIN,
@@ -24,17 +22,14 @@ from .coordinator import BTBmsCoordinator
 PARALLEL_UPDATES = 0
 
 
-class AsicLightEntityDescription(LightEntityDescription, frozen_or_thawed=True):
-    """Describes BMS sensor entity."""
-
-    attr_fn: Callable[[BMSsample], dict[str, int | str]] | None = None
+class AsicLightEntityDescription(LightEntityDescription):
+    pass
 
 
 LIGHT_TYPES: list[AsicLightEntityDescription] = [
     AsicLightEntityDescription(
         key="light_state",
         name="lumière",
-        attr_fn= 1,
     ),
 ]
 
@@ -69,32 +64,32 @@ class AsicLightEntity(CoordinatorEntity[BTBmsCoordinator],
         self._attr_unique_id = f"{DOMAIN}-{unique_id}-{descr.key}"
         self._attr_device_info = bms.device_info
         self._attr_has_entity_name = True
-        self.entity_description: BmsBinaryEntityDescription = descr  # type: ignore[reportIncompatibleVariableOverride]
+        self.entity_description: AsicLightEntityDescription = descr  # type: ignore[reportIncompatibleVariableOverride]
         super().__init__(bms)
-
-
 
     @property
     def available(self) -> bool:
         return not self.coordinator.data.get('pairing_state', True)
-        #return super().available
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         LOGGER.debug("light turn on")
         await self.coordinator._device.turn_on_off_light(True)
+        self.coordinator.data["light_state"] = True
+        self.async_write_ha_state()
+        self.coordinator.async_update_listeners()
         return
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         LOGGER.debug("light turn off")
         await self.coordinator._device.turn_on_off_light(False)
-        #self.coordinator._device.associate()
+        self.coordinator.data["light_state"] = False
+        self.async_write_ha_state()
+        self.coordinator.async_update_listeners()
         return
-
-
 
     @property
     def is_on(self) -> bool | None:  # type: ignore[reportIncompatibleVariableOverride]
         """Handle updated data from the coordinator."""
-        LOGGER.error(f"is on : {bool(self.coordinator.data.get('light_state'))}   {self.coordinator.data.get('light_state',False)}")
-        return bool(self.coordinator.data.get(self.entity_description.key,False))
-
+        LOGGER.debug(
+            f"light is on : {bool(self.coordinator.data.get('light_state'))}   {self.coordinator.data.get('light_state', False)}")
+        return bool(self.coordinator.data.get(self.entity_description.key, False))
