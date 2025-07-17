@@ -1,50 +1,19 @@
 """Base class defintion for battery management systems (BMS)."""
 
-from abc import ABC, abstractmethod
 import asyncio
-from collections.abc import Callable
-from enum import IntEnum
 import logging
-from statistics import fmean
-from typing import Any, Final, Literal, TypedDict
-
-from bleak import BleakClient
-from bleak.backends.characteristic import BleakGATTCharacteristic
-from bleak.backends.device import BLEDevice
-from bleak.exc import BleakError
-from bleak_retry_connector import BLEAK_TRANSIENT_BACKOFF_TIME, establish_connection
-
-from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
-from homeassistant.components.bluetooth.match import ble_device_matches
-from homeassistant.loader import BluetoothMatcherOptional
+from abc import ABC, abstractmethod
+from typing import Final, TypedDict
 
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
+from bleak import BleakClient
+from bleak.backends.device import BLEDevice
+from bleak.exc import BleakError
+from bleak_retry_connector import establish_connection
+from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
+from homeassistant.components.bluetooth.match import ble_device_matches
 from homeassistant.helpers.storage import Store
-
-type BMSvalue = Literal[
-    "battery_charging",
-    "battery_mode",
-    "battery_level",
-    "current",
-    "power",
-    "water_temperature",
-    "voltage",
-    "cycles",
-    "cycle_capacity",
-    "cycle_charge",
-    "delta_voltage",
-    "problem",
-    "runtime",
-    "balance_current",
-    "cell_count",
-    "cell_voltages",
-    "design_capacity",
-    "pack_count",
-    "temp_sensors",
-    "temp_values",
-    "problem_code",
-]
+from homeassistant.loader import BluetoothMatcherOptional
 
 
 class BMSsample(TypedDict, total=False):
@@ -90,11 +59,7 @@ class BaseBMS(ABC):
     CHARACTERISTIC_SYSTEM_ENCRYPTKEY_UUID = "3BEF0203-F30A-DF90-4A4C-74B6EB69184F"
     CHARACTERISTIC_SYSTEM_RANDOMKEY_UUID = "3BEF0201-F30A-DF90-4A4C-74B6EB69184F"
 
-    MAX_RETRY: Final[int] = 3  # max number of retries for data requests
-    _MAX_TIMEOUT_FACTOR: Final[int] = 8  # limit timout increase to 8x
-    TIMEOUT: Final[float] = BLEAK_TRANSIENT_BACKOFF_TIME * _MAX_TIMEOUT_FACTOR
-    _MAX_CELL_VOLT: Final[float] = 5.906  # max cell potential
-    _HRS_TO_SECS: Final[int] = 60 * 60  # seconds in an hour
+
 
     def __init__(
             self,
@@ -130,7 +95,6 @@ class BaseBMS(ABC):
         self._client: BleakClient = BleakClient(
             self._ble_device,
             disconnected_callback=self._on_disconnect,
-            services=[*self.uuid_services()],
         )
         self._data: bytearray = bytearray()
         # self._data_control: bytearray = bytearray()
@@ -167,17 +131,8 @@ class BaseBMS(ABC):
                 return True
         return False
 
-    @staticmethod
-    @abstractmethod
-    def uuid_services() -> list[str]:
-        """Return list of 128-bit UUIDs of services required by BMS."""
 
 
-
-    @staticmethod
-    @abstractmethod
-    def uuid_tx() -> str:
-        """Return 16-bit UUID of characteristic that provides write property."""
 
 
 
@@ -205,7 +160,6 @@ class BaseBMS(ABC):
             device=self._ble_device,
             name=self._ble_device.address,
             disconnected_callback=self._on_disconnect,
-            services=[*self.uuid_services()],
         )
 
         try:
@@ -217,78 +171,7 @@ class BaseBMS(ABC):
             await self.disconnect()
             raise
 
-    def _wr_response(self, char: int | str) -> bool:
-        char_tx: Final[BleakGATTCharacteristic | None] = (
-            self._client.services.get_characteristic(char)
-        )
-        return bool(char_tx and "write" in getattr(char_tx, "properties", []))
 
-    async def _send_msg(
-            self,
-            data: bytes,
-            max_size: int,
-            char: int | str,
-            attempt: int,
-            inv_wr_mode: bool = False,
-    ) -> None:
-        """Send message to the bms in chunks if needed."""
-        chunk_size: Final[int] = max_size or len(data)
-
-        for i in range(0, len(data), chunk_size):
-            chunk: bytes = data[i: i + chunk_size]
-            self._log.debug(
-                "TX BLE req #%i (%s%s%s): %s",
-                attempt + 1,
-                "!" if inv_wr_mode else "",
-                "W" if self._wr_response(char) else "WNR",
-                "." if self._inv_wr_mode is not None else "",
-                chunk.hex(" "),
-            )
-            await self._client.write_gatt_char(
-                char,
-                chunk,
-                response=(self._wr_response(char) != inv_wr_mode),
-            )
-
-    async def _await_reply(
-            self,
-            data: bytes,
-            char: int | str | None = None,
-            wait_for_notify: bool = True,
-            max_size: int = 0,
-    ) -> None:
-        """Send data to the BMS and wait for valid reply notification."""
-
-        for inv_wr_mode in (
-                [False, True] if self._inv_wr_mode is None else [self._inv_wr_mode]
-        ):
-            try:
-                for attempt in range(BaseBMS.MAX_RETRY):
-                    self._data_event.clear()  # clear event before requesting new data
-                    await self._send_msg(
-                        data, max_size, char or self.uuid_tx(), attempt, inv_wr_mode
-                    )
-                    try:
-                        if wait_for_notify:
-                            await asyncio.wait_for(
-                                self._wait_event(),
-                                BLEAK_TRANSIENT_BACKOFF_TIME
-                                * min(2 ** attempt, BaseBMS._MAX_TIMEOUT_FACTOR),
-                            )
-                    except TimeoutError:
-                        self._log.debug("TX BLE request timed out.")
-                        continue  # retry sending data
-
-                    self._inv_wr_mode = inv_wr_mode
-                    return  # leave loop if no exception
-            except BleakError as exc:
-                # reconnect on communication errors
-                self._log.warning(
-                    "TX BLE request error, retrying connection (%s)", type(exc).__name__
-                )
-                await self.disconnect()
-                await self._connect()
-        raise TimeoutError
 
     async def disconnect(self, reset: bool = False) -> None:
         """Disconnect the BMS, includes stoping notifications."""
@@ -387,47 +270,3 @@ class BaseBMS(ABC):
         await  self.client.write_gatt_char(self.CHARACTERISTIC_SYSTEM_ENCRYPTKEY_UUID, self.encrypt_key_barray, True)
 
 
-def crc_modbus(data: bytearray) -> int:
-    """Calculate CRC-16-CCITT MODBUS."""
-    crc: int = 0xFFFF
-    for i in data:
-        crc ^= i & 0xFF
-        for _ in range(8):
-            crc = (crc >> 1) ^ 0xA001 if crc % 2 else (crc >> 1)
-    return crc & 0xFFFF
-
-
-def lrc_modbus(data: bytearray) -> int:
-    """Calculate MODBUS LRC."""
-    return ((sum(data) ^ 0xFFFF) + 1) & 0xFFFF
-
-
-def crc_xmodem(data: bytearray) -> int:
-    """Calculate CRC-16-CCITT XMODEM."""
-    crc: int = 0x0000
-    for byte in data:
-        crc ^= byte << 8
-        for _ in range(8):
-            crc = (crc << 1) ^ 0x1021 if (crc & 0x8000) else (crc << 1)
-    return crc & 0xFFFF
-
-
-def crc8(data: bytearray) -> int:
-    """Calculate CRC-8/MAXIM-DOW."""
-    crc: int = 0x00  # Initialwert für CRC
-
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = (crc >> 1) ^ 0x8C if crc & 0x1 else crc >> 1
-
-    return crc & 0xFF
-
-
-def crc_sum(frame: bytearray, size: int = 1) -> int:
-    """Calculate the checksum of a frame using a specified size.
-
-    size : int, optional
-        The size of the checksum in bytes (default is 1).
-    """
-    return sum(frame) & ((1 << (8 * size)) - 1)

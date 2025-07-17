@@ -1,43 +1,19 @@
-from collections.abc import Callable
-from typing import Any, Final
+from typing import Final
 
-from Crypto.Cipher import AES
 from bleak import BleakError
-from bleak.backends.characteristic import BleakGATTCharacteristic
 from bleak.backends.device import BLEDevice
 from bleak.uuids import normalize_uuid_str
-import asyncio
-
 from homeassistant.helpers.storage import Store
 
-from .basebms import AdvertisementPattern, BaseBMS, BMSsample, BMSvalue, crc_modbus
+from .basebms import AdvertisementPattern, BaseBMS, BMSsample
 
 
 class BMS(BaseBMS):
     CHARACTERISTIC_PRECISEOB_STATUS_UUID = "E21D0105-AE5F-11EB-8529-0242AC130003"
     CHARACTERISTIC_PRECISEOB_CONTROL_UUID = "E21D0104-AE5F-11EB-8529-0242AC130003"
 
-    HEAD_READ: Final[bytes] = b"\xd2\x03"
-    CMD_INFO: Final[bytes] = b"\x00\x00\x00\x3e\xd7\xb9"
-    MOS_INFO: Final[bytes] = b"\x00\x3e\x00\x09\xf7\xa3"
-    HEAD_LEN: Final[int] = 3
-    CRC_LEN: Final[int] = 2
-    MAX_CELLS: Final[int] = 32
-    MAX_TEMP: Final[int] = 8
-    INFO_LEN: Final[int] = 84 + HEAD_LEN + CRC_LEN + MAX_CELLS + MAX_TEMP
-    MOS_TEMP_POS: Final[int] = HEAD_LEN + 8
-    MOS_NOT_AVAILABLE: Final[tuple[str]] = ("DL-FB4C2E0",)
-    _FIELDS: Final[list[tuple[BMSvalue, int, int, Callable[[int], Any]]]] = [
-        ("voltage", 80 + HEAD_LEN, 2, lambda x: float(x / 10)),
-        ("current", 82 + HEAD_LEN, 2, lambda x: float((x - 30000) / 10)),
-        ("battery_level", 84 + HEAD_LEN, 2, lambda x: float(x / 10)),
-        ("cycle_charge", 96 + HEAD_LEN, 2, lambda x: float(x / 10)),
-        ("cell_count", 98 + HEAD_LEN, 2, lambda x: min(x, BMS.MAX_CELLS)),
-        ("temp_sensors", 100 + HEAD_LEN, 2, lambda x: min(x, BMS.MAX_TEMP)),
-        ("cycles", 102 + HEAD_LEN, 2, lambda x: x),
-        ("delta_voltage", 112 + HEAD_LEN, 2, lambda x: float(x / 1000)),
-        ("problem_code", 116 + HEAD_LEN, 8, lambda x: x % 2 ** 64),
-    ]
+
+
 
     def __init__(self, ble_device: BLEDevice, store: Store, reconnect: bool = False) -> None:
         """Intialize private BMS members."""
@@ -59,18 +35,6 @@ class BMS(BaseBMS):
     def device_info() -> dict[str, str]:
         """Return device information for the Asys system."""
         return {}
-
-    @staticmethod
-    def uuid_services() -> list[str]:
-        """Return list of 128-bit UUIDs of services required by BMS."""
-        return [normalize_uuid_str("fff0")]
-
-
-
-    @staticmethod
-    def uuid_tx() -> str:
-        """Return 16-bit UUID of characteristic that provides write property."""
-        return "fff2"
 
 
 
