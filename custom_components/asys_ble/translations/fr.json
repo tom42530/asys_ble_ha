@@ -40,8 +40,19 @@
       "runtime": {
         "name": "Runtime"
       }
+    },
+    "binary_sensor": {
+      "pairing_state": {
+        "name": "Appairage"
+      },
+      "filtration_hors_gel_state": {
+        "name": "Filtration hors gel"
+      },
+      "surcharge_protection_state": {
+        "name": "Surcharge"
+      }
     }
-  } ,
+  },
   "options": {
     "step": {
       "init": {

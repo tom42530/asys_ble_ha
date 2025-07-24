@@ -30,9 +30,10 @@ class BmsBinaryEntityDescription(BinarySensorEntityDescription, frozen_or_thawed
 BINARY_SENSOR_TYPES: list[BmsBinaryEntityDescription] = [
     BmsBinaryEntityDescription(
         key="filtration_hors_gel_state",
-        name="filtration hors gel",
+        translation_key="filtration_hors_gel_state",
         icon = "mdi:snowflake-alert",
         device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     BmsBinaryEntityDescription(
         key="filtration_24_24_state",
@@ -48,13 +49,14 @@ BINARY_SENSOR_TYPES: list[BmsBinaryEntityDescription] = [
     ),
     BmsBinaryEntityDescription(
         key="surcharge_protection_state",
-        name="protection surcharge",
+        translation_key="surcharge_protection_state",
         icon="mdi:flash-alert",
-        device_class=BinarySensorDeviceClass.RUNNING,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     BmsBinaryEntityDescription(
         key="pairing_state",
-        translation_key="pairing status",
+        translation_key="pairing_state",
         icon="mdi:bluetooth-connect",
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
