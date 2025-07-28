@@ -15,6 +15,8 @@ from homeassistant.components.bluetooth.match import ble_device_matches
 from homeassistant.helpers.storage import Store
 from homeassistant.loader import BluetoothMatcherOptional
 
+from custom_components.asys_ble.const import DEFAULT_UNDERLOAD_PERIOD, DEFAULT_UNDERLOAD_INTENSITY_THRESHOLD
+
 
 class BMSsample(TypedDict, total=False):
     """Dictionary representing a sample of battery management system (BMS) data."""
@@ -39,6 +41,7 @@ class BMSsample(TypedDict, total=False):
     hw_version: str
     sw_version:str
     serial_number: str
+    underload_protection_state: bool
 
 
 class AdvertisementPattern(TypedDict, total=False):
@@ -99,6 +102,10 @@ class BaseBMS(ABC):
         self._data: bytearray = bytearray()
         # self._data_control: bytearray = bytearray()
         self._data_event: Final[asyncio.Event] = asyncio.Event()
+        self.is_pump_underload_protection_enabled = False
+        self.underload_intensity_threshold = DEFAULT_UNDERLOAD_INTENSITY_THRESHOLD
+        self.underload_period_s = DEFAULT_UNDERLOAD_PERIOD
+        self.underload_seen_datetime = None
 
     @staticmethod
     @abstractmethod
@@ -132,8 +139,11 @@ class BaseBMS(ABC):
         return False
 
 
-
-
+    def set_pump_underload_settings(self,is_pump_underload_protection_enabled: bool,underload_intensity_threshold: int,underload_period_s: int) -> None:
+        self._log.debug(f"set_pump_underload_settings {is_pump_underload_protection_enabled} {underload_intensity_threshold} {underload_period_s}")
+        self.is_pump_underload_protection_enabled = is_pump_underload_protection_enabled
+        self.underload_intensity_threshold = underload_intensity_threshold
+        self.underload_period_s = underload_period_s
 
 
     def _on_disconnect(self, _client: BleakClient) -> None:
