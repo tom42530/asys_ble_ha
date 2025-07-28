@@ -61,7 +61,16 @@ BINARY_SENSOR_TYPES: list[BmsBinaryEntityDescription] = [
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    BmsBinaryEntityDescription(
+        key="underload_protection_state",
+        translation_key="underload_protection_state",
+        entity_registry_enabled_default=False,
+        icon="mdi:flash-alert",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
 ]
+
 
 
 async def async_setup_entry(
@@ -100,5 +109,14 @@ class BMSBinarySensor(CoordinatorEntity[BTBmsCoordinator], BinarySensorEntity): 
     def is_on(self) -> bool | None:  # type: ignore[reportIncompatibleVariableOverride]
         """Handle updated data from the coordinator."""
         return bool(self.coordinator.data.get(self.entity_description.key))
+
+    @property
+    def available(self) -> bool:
+        if self.entity_description.key == "underload_protection_state" :
+            return  "underload_protection_state" in self.coordinator.data
+        else :
+            return super().available
+
+
 
 
