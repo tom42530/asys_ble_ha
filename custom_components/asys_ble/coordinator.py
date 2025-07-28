@@ -169,6 +169,7 @@ class BTBmsCoordinator(DataUpdateCoordinator[BMSsample]):
             self._link_q.extend(
                 [False] * (1 + int((monotonic() - start) / UPDATE_INTERVAL))
             )
+            await self._device.disconnect(reset=True)
 
         self._link_q[-1] = True  # set success
         LOGGER.debug("%s: BMS data sample %s", self.name, bms_data)
