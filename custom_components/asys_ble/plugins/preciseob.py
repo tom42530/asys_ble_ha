@@ -73,18 +73,7 @@ class BMS(BaseBMS):
 
 
 
-            if self.is_pump_underload_protection_enabled :
-                data["underload_protection_state"] = False
-                if data["filtration_state"] and data["current"] < self.underload_intensity_threshold:
-                    if self.underload_seen_datetime is None :
-                        self.underload_seen_datetime = datetime.now()
-                    elif abs(datetime.now() - self.underload_seen_datetime).total_seconds() >self.underload_period_s :
-                        self._log.error(f"alert")
-                        data["underload_protection_state"] = True
-                else :
-                    self.underload_seen_datetime = None
-            else :
-                self.underload_seen_datetime = None
+            self.set_underload_state(data)
 
 
             time_date_time = await self._client.read_gatt_char("00002a08-0000-1000-8000-00805f9b34fb")

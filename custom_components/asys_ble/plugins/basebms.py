@@ -1,5 +1,6 @@
 """Base class defintion for battery management systems (BMS)."""
 
+from datetime import datetime
 import asyncio
 import logging
 from abc import ABC, abstractmethod
@@ -229,6 +230,21 @@ class BaseBMS(ABC):
     @property
     def client(self):
         return self._client
+
+
+    def set_underload_state(self,data: BMSsample):
+        if self.is_pump_underload_protection_enabled:
+            data["underload_protection_state"] = False
+            if data["filtration_state"] and data["current"] < self.underload_intensity_threshold:
+                if self.underload_seen_datetime is None:
+                    self.underload_seen_datetime = datetime.now()
+                elif abs(datetime.now() - self.underload_seen_datetime).total_seconds() > self.underload_period_s:
+                    self._log.error(f"alert")
+                    data["underload_protection_state"] = True
+            else:
+                self.underload_seen_datetime = None
+        else:
+            self.underload_seen_datetime = None
 
     async def _associate_asic(self) -> None:
 
