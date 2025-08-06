@@ -30,9 +30,10 @@ class BmsBinaryEntityDescription(BinarySensorEntityDescription, frozen_or_thawed
 BINARY_SENSOR_TYPES: list[BmsBinaryEntityDescription] = [
     BmsBinaryEntityDescription(
         key="filtration_hors_gel_state",
-        name="filtration hors gel",
+        translation_key="filtration_hors_gel_state",
         icon = "mdi:snowflake-alert",
         device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     BmsBinaryEntityDescription(
         key="filtration_24_24_state",
@@ -48,18 +49,28 @@ BINARY_SENSOR_TYPES: list[BmsBinaryEntityDescription] = [
     ),
     BmsBinaryEntityDescription(
         key="surcharge_protection_state",
-        name="protection surcharge",
+        translation_key="surcharge_protection_state",
         icon="mdi:flash-alert",
-        device_class=BinarySensorDeviceClass.RUNNING,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     BmsBinaryEntityDescription(
         key="pairing_state",
-        translation_key="pairing status",
+        translation_key="pairing_state",
         icon="mdi:bluetooth-connect",
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    BmsBinaryEntityDescription(
+        key="underload_protection_state",
+        translation_key="underload_protection_state",
+        entity_registry_enabled_default=False,
+        icon="mdi:flash-alert",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
 ]
+
 
 
 async def async_setup_entry(
@@ -98,5 +109,14 @@ class BMSBinarySensor(CoordinatorEntity[BTBmsCoordinator], BinarySensorEntity): 
     def is_on(self) -> bool | None:  # type: ignore[reportIncompatibleVariableOverride]
         """Handle updated data from the coordinator."""
         return bool(self.coordinator.data.get(self.entity_description.key))
+
+    @property
+    def available(self) -> bool:
+        if self.entity_description.key == "underload_protection_state" :
+            return  "underload_protection_state" in self.coordinator.data
+        else :
+            return super().available
+
+
 
 

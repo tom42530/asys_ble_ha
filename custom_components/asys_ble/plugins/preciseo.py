@@ -65,6 +65,8 @@ class BMS(BaseBMS):
             data["surcharge_protection_state"] = bool(status_value[3])
             data["pairing_state"] = False
 
+            self.set_underload_state(data)
+
             model_name = await self._client.read_gatt_char("00002a24-0000-1000-8000-00805f9b34fb")
             self._log.info(f"model name: {model_name.decode('utf-8')}")
             data["model"]=model_name.decode('utf-8')

@@ -16,7 +16,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, LOGGER, UPDATE_INTERVAL
+from .const import DOMAIN, LOGGER, UPDATE_INTERVAL, DEFAULT_SCAN_INTERVAL_S, DEFAULT_UNDERLOAD_INTENSITY_THRESHOLD, \
+    DEFAULT_UNDERLOAD_PERIOD
 from .plugins.basebms import BaseBMS, BMSsample
 
 
@@ -32,7 +33,7 @@ class BTBmsCoordinator(DataUpdateCoordinator[BMSsample]):
     ) -> None:
         """Initialize BMS data coordinator."""
         assert ble_device.address is not None
-        scan_interval = config_entry.options.get("scan_interval", 30)
+        scan_interval = config_entry.options.get("scan_interval", DEFAULT_SCAN_INTERVAL_S)
         LOGGER.debug(f"scan interval : {scan_interval}")
         super().__init__(
             hass=hass,
@@ -58,6 +59,10 @@ class BTBmsCoordinator(DataUpdateCoordinator[BMSsample]):
             self.hass, address=self._mac, connectable=True
         ):
             LOGGER.debug("%s: advertisement: %s", self.name, service_info.as_dict())
+
+        self._device.set_pump_underload_settings(config_entry.options.get("pump_underload_protection", False),
+                                              config_entry.options.get("underload_intensity_threshold", DEFAULT_UNDERLOAD_INTENSITY_THRESHOLD),
+                                                 config_entry.options.get("underload_period_s", DEFAULT_UNDERLOAD_PERIOD))
 
         # retrieve device information
         device_info: Final[dict[str, str]] = self._device.device_info()

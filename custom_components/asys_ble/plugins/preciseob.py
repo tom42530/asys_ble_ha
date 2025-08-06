@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Final
 
 from bleak import BleakError
@@ -69,6 +70,11 @@ class BMS(BaseBMS):
             data["filtration_state"] = bool(status_value[2])
             data["surcharge_protection_state"] = bool(status_value[3])
             data["pairing_state"] = False
+
+
+
+            self.set_underload_state(data)
+
 
             time_date_time = await self._client.read_gatt_char("00002a08-0000-1000-8000-00805f9b34fb")
             self._log.info(f"date_time: {time_date_time.decode('utf-8')}")
