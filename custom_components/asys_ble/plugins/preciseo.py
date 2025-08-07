@@ -82,9 +82,9 @@ class BMS(BaseBMS):
             data["hw_version"]=model_name.decode('utf-8')
 
 
-            manufacturer = await self._client.read_gatt_char("00002a00-0000-1000-8000-00805f9b34fb")
-            self._log.info(f"manufacturer: {manufacturer.decode('utf-8')}")
-            data["manufacturer"] = manufacturer.decode('utf-8')
+            #manufacturer = await self._client.read_gatt_char("00002a00-0000-1000-8000-00805f9b34fb")
+            #self._log.info(f"manufacturer: {manufacturer.decode('utf-8')}")
+            data["manufacturer"] = "ASYS"
 
 
         except BleakError as e:
