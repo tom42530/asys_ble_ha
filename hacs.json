@@ -3,5 +3,6 @@
   "filename": "asys_ble.zip",  
   "homeassistant": "2025.2.2",
   "render_readme": true,
-  "zip_release": true
+  "zip_release": true,
+  "country": "FR"
 }
