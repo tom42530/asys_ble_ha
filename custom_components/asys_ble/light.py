@@ -4,7 +4,7 @@ from typing import Any
 
 from homeassistant.components.light import (
     LightEntityDescription,
-    LightEntity
+    LightEntity, ColorMode
 
 )
 from homeassistant.core import HomeAssistant
@@ -42,10 +42,11 @@ async def async_setup_entry(
     """Add sensors for passed config_entry in Home Assistant."""
 
     bms: BTBmsCoordinator = config_entry.runtime_data
-    for descr in LIGHT_TYPES:
-        async_add_entities(
-            [AsicLightEntity(bms, descr, format_mac(config_entry.unique_id))]
-        )
+    async_add_entities([
+        AsicLightEntity(bms, descr, format_mac(config_entry.unique_id))
+        for descr in LIGHT_TYPES
+    ])
+
 
 
 class AsicLightEntity(CoordinatorEntity[BTBmsCoordinator],
@@ -61,35 +62,46 @@ class AsicLightEntity(CoordinatorEntity[BTBmsCoordinator],
             unique_id: str,
     ) -> None:
         """Intialize BMS binary sensor."""
+        super().__init__(bms)
+
+        self.entity_description = descr
         self._attr_unique_id = f"{DOMAIN}-{unique_id}-{descr.key}"
         self._attr_device_info = bms.device_info
         self._attr_has_entity_name = True
-        self.entity_description: AsicLightEntityDescription = descr  # type: ignore[reportIncompatibleVariableOverride]
-        super().__init__(bms)
+        self._attr_supported_color_modes = {ColorMode.ONOFF}
+        self._attr_icon = "mdi:lightbulb"
 
     @property
     def available(self) -> bool:
-        return not self.coordinator.data.get('pairing_state', True)
+        """Return if entity is available."""
+        return not self.coordinator.data.get("pairing_state", True)
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the light is on."""
+        light_state = self.coordinator.data.get(self.entity_description.key, False)
+        LOGGER.debug("light is on: %s", light_state)
+        return bool(light_state)
+
+    @property
+    def color_mode(self) -> ColorMode | None:
+        """Return the current color mode."""
+        if self.is_on:
+            return ColorMode.ONOFF
+        return None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the light on."""
         LOGGER.debug("light turn on")
         await self.coordinator._device.turn_on_off_light(True)
         self.coordinator.data["light_state"] = True
         self.async_write_ha_state()
         self.coordinator.async_update_listeners()
-        return
 
     async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the light off."""
         LOGGER.debug("light turn off")
         await self.coordinator._device.turn_on_off_light(False)
         self.coordinator.data["light_state"] = False
         self.async_write_ha_state()
         self.coordinator.async_update_listeners()
-        return
-
-    @property
-    def is_on(self) -> bool | None:  # type: ignore[reportIncompatibleVariableOverride]
-        """Handle updated data from the coordinator."""
-        LOGGER.debug(
-            f"light is on : {bool(self.coordinator.data.get('light_state'))}   {self.coordinator.data.get('light_state', False)}")
-        return bool(self.coordinator.data.get(self.entity_description.key, False))
