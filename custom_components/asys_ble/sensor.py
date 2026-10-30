@@ -5,7 +5,8 @@ from datetime import datetime
 from typing import Final, cast
 
 from custom_components.asys_ble.plugins.basebms import  BMSsample
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription,RestoreEntity
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     ATTR_BATTERY_LEVEL,
